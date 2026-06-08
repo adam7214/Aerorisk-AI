@@ -16,7 +16,7 @@ This platform is a decision-support prototype only. It does not certify safety, 
 
 ## Getting Started
 
-1. Install dependencies. The repo includes a pnpm lockfile, but npm also works.
+1. Install dependencies.
 
    ```bash
    pnpm install
