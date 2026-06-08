@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkflowStatus {
+  AI_DRAFT
+  HUMAN_REVIEW_REQUIRED
+  ACCEPTED
+  MODIFIED
+  REJECTED
+  ESCALATED
+  CLOSED
+}
+
+enum Severity {
+  MINOR
+  MODERATE
+  MAJOR
+  HAZARDOUS
+  CATASTROPHIC
+}
+
+enum Likelihood {
+  RARE
+  UNLIKELY
+  POSSIBLE
+  LIKELY
+  FREQUENT
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  EXTREME
+}
+
+enum ReviewDecision {
+  ACCEPTED
+  MODIFIED
+  REJECTED
+  ESCALATED
+  CLOSED
+}
+
+model Report {
+  id                 String                @id @default(cuid())
+  title              String
+  narrative          String
+  eventDate          DateTime
+  location           String
+  phaseOfFlight      String
+  reporterRole       String
+  tags               String[]
+  status             WorkflowStatus        @default(AI_DRAFT)
+  assignedReviewer   String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  aiAnalysis         AIAnalysis?
+  hazards            Hazard[]
+  riskAssessments    RiskAssessment[]
+  humanReviews       HumanReview[]
+  governanceChecklist GovernanceChecklist?
+  auditLogs          AuditLog[]
+}
+
+model AIAnalysis {
+  id               String   @id @default(cuid())
+  reportId         String   @unique
+  modelName        String
+  modelVersion     String
+  promptVersion    String?
+  summary          String
+  rationale        String
+  confidenceScore  Float
+  recommendedStatus WorkflowStatus
+  recommendedSeverity Severity
+  recommendedLikelihood Likelihood
+  recommendedRiskLevel RiskLevel
+  rawOutput        Json?
+  validatedOutput  Json?
+  createdAt        DateTime @default(now())
+  report           Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model Hazard {
+  id          String   @id @default(cuid())
+  reportId    String
+  category    String
+  description String
+  severity    Severity
+  likelihood  Likelihood
+  confidenceScore Float
+  createdAt   DateTime @default(now())
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model RiskAssessment {
+  id          String   @id @default(cuid())
+  reportId    String
+  severity    Severity
+  likelihood  Likelihood
+  riskLevel   RiskLevel
+  score       Int
+  source      String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model HumanReview {
+  id                 String         @id @default(cuid())
+  reportId           String
+  reviewerName       String
+  decision           ReviewDecision
+  comments           String
+  adjustedSeverity   Severity?
+  adjustedLikelihood Likelihood?
+  adjustedRiskLevel  RiskLevel?
+  createdAt          DateTime       @default(now())
+  report             Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model GovernanceChecklist {
+  id                     String   @id @default(cuid())
+  reportId               String   @unique
+  deidentified           Boolean  @default(false)
+  rationaleReviewed      Boolean  @default(false)
+  humanDecisionRecorded  Boolean  @default(false)
+  riskOwnerAssigned      Boolean  @default(false)
+  escalationChecked      Boolean  @default(false)
+  limitationsAcknowledged Boolean @default(false)
+  notes                  String?
+  updatedAt              DateTime @updatedAt
+  report                 Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  reportId    String?
+  actor       String
+  action      String
+  details     String
+  modelName   String?
+  promptVersion String?
+  rawAiOutput Json?
+  validatedAiOutput Json?
+  aiResponseTimestamp DateTime?
+  fromStatus  WorkflowStatus?
+  toStatus    WorkflowStatus?
+  createdAt   DateTime @default(now())
+  report      Report?  @relation(fields: [reportId], references: [id], onDelete: SetNull)
+}
